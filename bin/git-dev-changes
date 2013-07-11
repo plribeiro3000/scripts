@@ -1,0 +1,42 @@
+#!/bin/bash
+# Getting opts
+while getopts ":s:u:" opt; do
+  case $opt in
+    s)
+      since=$OPTARG
+      ;;
+    u)
+      until=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Setting null parameters
+if [[ -z "$since" ]]
+  then
+    since="1 week ago"
+  fi
+
+if [[ -z "$until" ]]
+  then
+    until="now"
+  fi
+
+# Getting developers with commits in the ranged date
+developers=($(git log --since "${since}" --until "${until}" --format='%cE' | sort -u))
+
+# Iterating over array and printing data
+for developer in "${developers[@]}"
+do
+  developer_name=`git log --shortstat --author "${developer}" | grep "\[" | sed 's/.*\[\([^]]*\)\].*/\1/g' | sed -n 1p`
+  echo -e "\033[01;32m$developer_name \033[01;31m<$developer>\033[00;00m"
+  git log --shortstat --author "${developer}" --since "${since}" --until "${until}" | grep "changed," | awk '{files+=$1; inserted+=$4; deleted+=$6} END {print "\033[00;00mfiles changed:\033[01;33m", files, "\033[00;00mlines inserted:\033[01;33m", inserted, "\033[00;00mlines deleted:\033[01;33m", deleted, "\033[00;00m"}'
+done
